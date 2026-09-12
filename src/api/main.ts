@@ -1,9 +1,9 @@
 import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import { Logger } from 'nestjs-pino';
-import { AppModule } from './api.module';
-import { loadConfig } from '../core/config';
-import { describeError } from '../core/errors';
+import { AppModule } from './api.module.js';
+import { loadConfig } from '../core/config.js';
+import { describeError } from '../core/errors.js';
 
 async function bootstrap(): Promise<void> {
   // Validate the environment before anything else is constructed, so a bad

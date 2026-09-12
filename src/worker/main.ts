@@ -1,9 +1,9 @@
 import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import { Logger } from 'nestjs-pino';
-import { loadConfig } from '../core/config';
-import { describeError } from '../core/errors';
-import { WorkerModule } from './worker.module';
+import { loadConfig } from '../core/config.js';
+import { describeError } from '../core/errors.js';
+import { WorkerModule } from './worker.module.js';
 
 /**
  * Resolves when the process is asked to stop. Without this the worker would

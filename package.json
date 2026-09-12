@@ -4,7 +4,7 @@
   "private": true,
   "description": "probeboard API and probe worker",
   "license": "MIT",
-  "type": "commonjs",
+  "type": "module",
   "engines": {
     "node": ">=22"
   },
