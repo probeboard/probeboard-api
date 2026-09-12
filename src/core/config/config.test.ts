@@ -66,3 +66,32 @@ describe('WORKER_ID', () => {
     expect(loadConfig({ ...valid, WORKER_ID: 'probe-eu-1' }).WORKER_ID).toBe('probe-eu-1');
   });
 });
+
+describe('API_BODY_LIMIT', () => {
+  it('accepts a well-formed size', () => {
+    expect(loadConfig({ ...valid, API_BODY_LIMIT: '256kb' }).API_BODY_LIMIT).toBe('256kb');
+  });
+
+  it('refuses a doubled unit instead of silently shrinking the cap', () => {
+    // body-parser's own parser reads "64kbb" as 64 bytes.
+    expect(() => loadConfig({ ...valid, API_BODY_LIMIT: '64kbb' })).toThrow(/API_BODY_LIMIT/);
+  });
+
+  it('refuses unparseable text instead of silently removing the cap', () => {
+    // body-parser treats an unparseable limit as no limit.
+    expect(() => loadConfig({ ...valid, API_BODY_LIMIT: 'abc' })).toThrow(/API_BODY_LIMIT/);
+  });
+
+  it('refuses a bare number, which would mean bytes rather than kilobytes', () => {
+    expect(() => loadConfig({ ...valid, API_BODY_LIMIT: '64' })).toThrow(/API_BODY_LIMIT/);
+  });
+
+  it('refuses zero and negative sizes', () => {
+    expect(() => loadConfig({ ...valid, API_BODY_LIMIT: '0kb' })).toThrow(/API_BODY_LIMIT/);
+    expect(() => loadConfig({ ...valid, API_BODY_LIMIT: '-5kb' })).toThrow(/API_BODY_LIMIT/);
+  });
+
+  it('refuses an absurd cap that would defeat the protection', () => {
+    expect(() => loadConfig({ ...valid, API_BODY_LIMIT: '5gb' })).toThrow(/API_BODY_LIMIT/);
+  });
+});

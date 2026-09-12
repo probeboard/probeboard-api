@@ -1,5 +1,6 @@
 import { hostname } from 'node:os';
 import { z } from 'zod';
+import { parseByteSize } from './byte-size.js';
 
 /** How the process presents itself and what it logs. */
 const runtime = {
@@ -11,7 +12,20 @@ const runtime = {
 const api = {
   API_PORT: z.coerce.number().int().min(1).max(65535).default(3000),
   // Monitors are small JSON documents; nothing legitimate needs more.
-  API_BODY_LIMIT: z.string().default('64kb'),
+  //
+  // Validated here rather than left to body-parser, whose parser is lenient in
+  // ways that turn a typo into a silent misconfiguration: "64kbb" becomes 64
+  // bytes and "abc" becomes no limit at all. A bad value must stop the process
+  // at boot, not quietly remove the cap.
+  API_BODY_LIMIT: z
+    .string()
+    .default('64kb')
+    .refine((v) => parseByteSize(v) !== undefined, {
+      message: 'must be a positive byte size with an explicit unit, such as "64kb"',
+    })
+    .refine((v) => (parseByteSize(v) ?? 0) <= 8 * 1024 * 1024, {
+      message: 'must not exceed 8mb',
+    }),
 };
 
 const database = {
