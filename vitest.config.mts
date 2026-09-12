@@ -37,6 +37,11 @@ export default defineConfig({
         // against a real PostgreSQL, which CI runs as its own job. Unit tests
         // here would assert that we called a mock.
         'src/**/*.repository.ts',
+        // Counting rows inside a moving window is database behaviour, the same
+        // as a repository. Covered by rate-limit.service.int.test.ts, which
+        // exercises both limits, the interaction between them, and that the
+        // counters survive a restart. Unit tests here would mock the counting.
+        'src/api/auth/rate-limit.service.ts',
       ],
       // Deliberately low for M0, when most of the tree is wiring. The
       // thresholds rise as the milestones that carry real logic land; docs

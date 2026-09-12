@@ -95,3 +95,113 @@ describe('API_BODY_LIMIT', () => {
     expect(() => loadConfig({ ...valid, API_BODY_LIMIT: '5gb' })).toThrow(/API_BODY_LIMIT/);
   });
 });
+
+describe('cross-field rules', () => {
+  it('refuses retention shorter than the rate-limit window', () => {
+    // The housekeeping sweep would delete the evidence the limiter is still
+    // counting, so a 15-minute limit would be bypassed after one minute.
+    expect(() =>
+      loadConfig({
+        ...valid,
+        AUTH_WINDOW_MS: '900000',
+        AUTH_ATTEMPT_RETENTION_MS: '60000',
+      }),
+    ).toThrow(/AUTH_ATTEMPT_RETENTION_MS/);
+  });
+
+  it('accepts retention equal to the window', () => {
+    expect(
+      loadConfig({ ...valid, AUTH_WINDOW_MS: '60000', AUTH_ATTEMPT_RETENTION_MS: '60000' })
+        .AUTH_ATTEMPT_RETENTION_MS,
+    ).toBe(60_000);
+  });
+
+  it('accepts retention longer than the window', () => {
+    expect(
+      loadConfig({ ...valid, AUTH_WINDOW_MS: '60000', AUTH_ATTEMPT_RETENTION_MS: '3600000' })
+        .AUTH_ATTEMPT_RETENTION_MS,
+    ).toBe(3_600_000);
+  });
+
+  it('explains why, rather than only that it is invalid', () => {
+    const message = (() => {
+      try {
+        loadConfig({ ...valid, AUTH_WINDOW_MS: '900000', AUTH_ATTEMPT_RETENTION_MS: '60000' });
+      } catch (err) {
+        return (err as Error).message;
+      }
+    })();
+    expect(message).toContain('bypassed');
+  });
+});
+
+describe('SESSION_RETENTION_DAYS', () => {
+  it('is configurable rather than embedded in the sweep', () => {
+    expect(loadConfig({ ...valid, SESSION_RETENTION_DAYS: '90' }).SESSION_RETENTION_DAYS).toBe(90);
+  });
+
+  it('defaults to 30 days', () => {
+    expect(loadConfig(valid).SESSION_RETENTION_DAYS).toBe(30);
+  });
+});
+
+describe('authentication bounds reject invalid values at boot', () => {
+  // Every bound below is a guard. A guard with no failing-case test is not
+  // known to work, so each one is driven past its limit here.
+  const cases: [string, string][] = [
+    // Argon2 below this is not memory-hard enough to satisfy NFR-10.
+    ['ARGON2_MEMORY_KIB', '1024'],
+    ['ARGON2_MEMORY_KIB', '0'],
+    ['ARGON2_TIME_COST', '0'],
+    ['ARGON2_PARALLELISM', '0'],
+    ['ARGON2_PARALLELISM', '99'],
+    // A short minimum would let a user choose a password Argon2 cannot save.
+    ['PASSWORD_MIN_LENGTH', '4'],
+    ['SESSION_TTL_DAYS', '0'],
+    ['SESSION_TTL_DAYS', '400'],
+    ['SESSION_RETENTION_DAYS', '0'],
+    // A window of a few milliseconds is no limit at all.
+    ['AUTH_WINDOW_MS', '10'],
+    ['AUTH_MAX_PER_IP', '0'],
+    ['AUTH_MAX_FAILURES_PER_EMAIL', '0'],
+    ['AUTH_ATTEMPT_RETENTION_MS', '1000'],
+    ['AUTH_SWEEP_INTERVAL_MS', '1000'],
+  ];
+
+  it.each(cases)('rejects %s=%s', (key, value) => {
+    expect(() => loadConfig({ ...valid, [key]: value })).toThrow(new RegExp(key));
+  });
+
+  it.each([
+    'ARGON2_MEMORY_KIB',
+    'ARGON2_TIME_COST',
+    'SESSION_TTL_DAYS',
+    'AUTH_MAX_PER_IP',
+    'AUTH_WINDOW_MS',
+  ])('rejects a non-numeric %s rather than coercing it to NaN', (key) => {
+    expect(() => loadConfig({ ...valid, [key]: 'lots' })).toThrow(new RegExp(key));
+  });
+
+  it('accepts the documented OWASP minimum for Argon2id', () => {
+    const cfg = loadConfig({
+      ...valid,
+      ARGON2_MEMORY_KIB: '19456',
+      ARGON2_TIME_COST: '2',
+      ARGON2_PARALLELISM: '1',
+    });
+    expect([cfg.ARGON2_MEMORY_KIB, cfg.ARGON2_TIME_COST, cfg.ARGON2_PARALLELISM]).toEqual([
+      19456, 2, 1,
+    ]);
+  });
+
+  it('sweeps on its own schedule, not the retention period', () => {
+    // These are different questions, and tying them together meant the sweep
+    // never ran on an instance that restarted more often than the retention.
+    const cfg = loadConfig({
+      ...valid,
+      AUTH_ATTEMPT_RETENTION_MS: '86400000',
+      AUTH_SWEEP_INTERVAL_MS: '3600000',
+    });
+    expect(cfg.AUTH_SWEEP_INTERVAL_MS).toBeLessThan(cfg.AUTH_ATTEMPT_RETENTION_MS);
+  });
+});
