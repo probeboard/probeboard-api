@@ -14,8 +14,16 @@ updates:
       development:
         dependency-type: development
         update-types: [minor, patch]
-    # Majors come one at a time: NestJS 12 and TypeScript 7 are both breaking,
-    # and they need a human reading the changelog.
+    # Majors come one at a time: they need a human reading the changelog.
+    ignore:
+      # typescript-eslint does not support TypeScript 7, so taking it would
+      # silently disable every type-aware rule -- no-floating-promises and
+      # no-misused-promises above all, which are the ones that matter in a
+      # scheduler. tsc itself already passes clean under 7, so this is purely
+      # the lint toolchain. Tracked upstream at
+      # https://github.com/typescript-eslint/typescript-eslint/issues/10940
+      - dependency-name: typescript
+        update-types: ['version-update:semver-major']
     commit-message:
       prefix: deps
       prefix-development: deps-dev
@@ -24,6 +32,14 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    ignore:
+      # The Node version is four coordinated values -- the Dockerfile, the CI
+      # setup-node version, .nvmrc and the engines field. Bumping only the
+      # image would ship a runtime nothing tests against. Majors are also how
+      # a non-LTS line arrives: Node 26 is Current, not LTS. Moving LTS lines
+      # is a deliberate change across all four, not a dependency bump.
+      - dependency-name: node
+        update-types: ['version-update:semver-major']
     commit-message:
       prefix: deps
 
