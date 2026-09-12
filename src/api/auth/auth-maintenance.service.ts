@@ -48,7 +48,9 @@ export class AuthMaintenanceService implements OnModuleInit, OnModuleDestroy {
 
     try {
       const [sessions, attempts] = await Promise.all([
-        this.sessions.pruneExpired(new Date(now.getTime() - 30 * 86_400_000)),
+        this.sessions.pruneExpired(
+          new Date(now.getTime() - this.cfg.SESSION_RETENTION_DAYS * 86_400_000),
+        ),
         this.attempts.pruneBefore(new Date(now.getTime() - retention)),
       ]);
 

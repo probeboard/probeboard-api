@@ -95,3 +95,52 @@ describe('API_BODY_LIMIT', () => {
     expect(() => loadConfig({ ...valid, API_BODY_LIMIT: '5gb' })).toThrow(/API_BODY_LIMIT/);
   });
 });
+
+describe('cross-field rules', () => {
+  it('refuses retention shorter than the rate-limit window', () => {
+    // The housekeeping sweep would delete the evidence the limiter is still
+    // counting, so a 15-minute limit would be bypassed after one minute.
+    expect(() =>
+      loadConfig({
+        ...valid,
+        AUTH_WINDOW_MS: '900000',
+        AUTH_ATTEMPT_RETENTION_MS: '60000',
+      }),
+    ).toThrow(/AUTH_ATTEMPT_RETENTION_MS/);
+  });
+
+  it('accepts retention equal to the window', () => {
+    expect(
+      loadConfig({ ...valid, AUTH_WINDOW_MS: '60000', AUTH_ATTEMPT_RETENTION_MS: '60000' })
+        .AUTH_ATTEMPT_RETENTION_MS,
+    ).toBe(60_000);
+  });
+
+  it('accepts retention longer than the window', () => {
+    expect(
+      loadConfig({ ...valid, AUTH_WINDOW_MS: '60000', AUTH_ATTEMPT_RETENTION_MS: '3600000' })
+        .AUTH_ATTEMPT_RETENTION_MS,
+    ).toBe(3_600_000);
+  });
+
+  it('explains why, rather than only that it is invalid', () => {
+    const message = (() => {
+      try {
+        loadConfig({ ...valid, AUTH_WINDOW_MS: '900000', AUTH_ATTEMPT_RETENTION_MS: '60000' });
+      } catch (err) {
+        return (err as Error).message;
+      }
+    })();
+    expect(message).toContain('bypassed');
+  });
+});
+
+describe('SESSION_RETENTION_DAYS', () => {
+  it('is configurable rather than embedded in the sweep', () => {
+    expect(loadConfig({ ...valid, SESSION_RETENTION_DAYS: '90' }).SESSION_RETENTION_DAYS).toBe(90);
+  });
+
+  it('defaults to 30 days', () => {
+    expect(loadConfig(valid).SESSION_RETENTION_DAYS).toBe(30);
+  });
+});

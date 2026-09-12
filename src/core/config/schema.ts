@@ -63,6 +63,11 @@ const auth = {
     .int()
     .min(60_000)
     .default(24 * 3600_000),
+
+  // How long an expired or revoked session is kept before it is swept. Kept
+  // rather than deleted at expiry so an operator can still answer "was this
+  // session live at the time?" after an incident.
+  SESSION_RETENTION_DAYS: z.coerce.number().int().min(1).max(3650).default(30),
 };
 
 const database = {
@@ -102,7 +107,7 @@ const scheduler = {
   SCHEDULER_LEASE_MS: z.coerce.number().int().min(1000).default(60_000),
 };
 
-export const configSchema = z.object({
+const baseSchema = z.object({
   ...runtime,
   ...api,
   ...auth,
@@ -111,4 +116,17 @@ export const configSchema = z.object({
   ...scheduler,
 });
 
-export type AppConfig = z.infer<typeof configSchema>;
+/**
+ * Cross-field rules, which a per-field schema cannot express.
+ */
+export const configSchema = baseSchema.refine(
+  (c) => c.AUTH_ATTEMPT_RETENTION_MS >= c.AUTH_WINDOW_MS,
+  {
+    path: ['AUTH_ATTEMPT_RETENTION_MS'],
+    message:
+      'must be at least AUTH_WINDOW_MS, or the housekeeping sweep deletes the ' +
+      'evidence the rate limiter is still counting and the limit is bypassed',
+  },
+);
+
+export type AppConfig = z.infer<typeof baseSchema>;
