@@ -83,7 +83,9 @@ async function register(email: string, password: string) {
 
 /** Everything login would do. */
 async function login(email: string, password: string, ip = IP) {
-  const verdict = await limiter.check(ip, email);
+  // Admission records the attempt as part of the decision, so a parallel burst
+  // cannot slip past the cap.
+  const verdict = await limiter.admit(ip, email);
   if (!verdict.allowed) return { outcome: 'rate_limited' as const };
 
   const user = await users.findByEmail(email);
@@ -93,8 +95,8 @@ async function login(email: string, password: string, ip = IP) {
     ? await passwords.verify(user.password_hash, password)
     : await passwords.verifyDummy(password);
 
-  await limiter.record(ip, email, ok);
   if (!ok || !user) return { outcome: 'rejected' as const };
+  await limiter.succeeded(ip, email);
 
   const token = generateToken();
   await sessions.create(user.id, hashToken(token), new Date(Date.now() + 86_400_000));
