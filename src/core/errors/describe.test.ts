@@ -90,6 +90,21 @@ describe('describeError never throws', () => {
     expect(describeError(undefined)).toBe('undefined');
   });
 
+  it('handles a value whose very type cannot be read', () => {
+    // A Proxy can throw from Symbol.toStringTag, which is the last thing
+    // describeError falls back to.
+    const hostile = new Proxy(
+      {},
+      {
+        get() {
+          throw new Error('even toString explodes');
+        },
+      },
+    );
+    expect(() => describeError(hostile)).not.toThrow();
+    expect(describeError(hostile)).toBe('[unrepresentable]');
+  });
+
   it('handles an AggregateError whose members are hostile', () => {
     const circular: Record<string, unknown> = {};
     circular.self = circular;
