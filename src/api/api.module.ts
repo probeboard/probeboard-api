@@ -3,6 +3,7 @@ import { LoggerModule } from 'nestjs-pino';
 import { APP_CONFIG, ConfigModule } from '../core/config/config.module.js';
 import type { AppConfig } from '../core/config/schema.js';
 import { DbModule } from '../core/db/db.module.js';
+import { AuthModule } from './auth/auth.module.js';
 import { loggerOptions } from '../core/logging/index.js';
 import { ErrorFilter } from './common/filters/error.filter.js';
 import { HealthModule } from './health/health.module.js';
@@ -16,6 +17,7 @@ import { HealthModule } from './health/health.module.js';
       useFactory: (cfg: AppConfig) => loggerOptions('api', cfg),
     }),
     DbModule,
+    AuthModule,
     HealthModule,
   ],
   providers: [ErrorFilter],
