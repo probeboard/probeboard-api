@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { loadConfig } from './config.js';
+import { loadConfig } from './index.js';
 
 const valid = { DATABASE_URL: 'postgres://u:p@localhost:5432/probeboard' };
 
