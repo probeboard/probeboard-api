@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
-import { loadConfig } from '../config.js';
-import { createDb, createPool } from './database.js';
+import { loadConfig } from '../config/index.js';
+import { createDb } from './kysely.js';
+import { createPool } from './pool.js';
 
 const cfg = loadConfig({
   DATABASE_URL: 'postgres://u:p@127.0.0.1:1/none',

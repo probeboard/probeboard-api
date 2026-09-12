@@ -19,7 +19,7 @@ services:
 
   migrate:
     build: .
-    command: ['node', 'dist/core/db/migrate.js', 'up']
+    command: ['node', 'dist/core/db/migrator/cli.js', 'up']
     environment:
       DATABASE_URL: postgres://probeboard:probeboard@postgres:5432/probeboard
     depends_on:

@@ -21,10 +21,12 @@ export default defineConfig({
         // `migrations` job, which applies the schema against a real
         // PostgreSQL, asserts re-running is a no-op, then rolls back and
         // re-applies. Unit tests here would test a mocked pg client.
-        'src/core/db/migrate.ts',
+        'src/core/db/migrator/cli.ts',
         // A thin Nest adapter over createPool/createDb, both of which are
         // tested directly in database.test.ts.
         'src/core/db/db.service.ts',
+        // Re-export barrels.
+        'src/**/index.ts',
         // Checks the source tree rather than running it.
         'src/architecture.test.ts',
       ],
