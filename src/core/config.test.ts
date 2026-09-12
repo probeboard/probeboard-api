@@ -37,6 +37,21 @@ describe('loadConfig', () => {
   });
 });
 
+describe('error reporting', () => {
+  it('labels an issue with no path as (root) rather than an empty string', () => {
+    // zod reports whole-object problems with an empty path; the message must
+    // still name something a reader can act on.
+    const err = (() => {
+      try {
+        loadConfig(null as unknown as NodeJS.ProcessEnv);
+      } catch (e) {
+        return (e as Error).message;
+      }
+    })();
+    expect(err).toContain('(root)');
+  });
+});
+
 describe('WORKER_ID', () => {
   it('defaults to something unique per instance, not just the pid', () => {
     // Every container runs its process as PID 1, so a pid-only default would

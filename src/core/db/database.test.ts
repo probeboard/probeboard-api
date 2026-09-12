@@ -1,9 +1,22 @@
 import { describe, expect, it, vi } from 'vitest';
 import { loadConfig } from '../config.js';
-import { createPool } from './database.js';
+import { createDb, createPool } from './database.js';
 
 const cfg = loadConfig({
   DATABASE_URL: 'postgres://u:p@127.0.0.1:1/none',
+});
+
+describe('createDb', () => {
+  it('builds a Kysely instance over the pool', async () => {
+    const pool = createPool(cfg, () => {});
+    const db = createDb(pool);
+
+    // Compiling a query proves the dialect is wired without opening a socket.
+    const compiled = db.selectFrom('schema_migrations').select('name').compile();
+    expect(compiled.sql).toContain('schema_migrations');
+
+    await db.destroy();
+  });
 });
 
 describe('createPool', () => {

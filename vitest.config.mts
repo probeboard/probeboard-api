@@ -4,5 +4,43 @@ export default defineConfig({
   test: {
     include: ['src/**/*.{test,spec}.ts'],
     environment: 'node',
+    coverage: {
+      provider: 'v8',
+      reporter: ['text-summary', 'lcov', 'json-summary'],
+      reportsDirectory: 'coverage',
+      include: ['src/**/*.ts'],
+      exclude: [
+        'src/**/*.{test,spec}.ts',
+        // Entrypoints are wiring: they are exercised by the container stack
+        // job, not by unit tests, and mocking Nest's bootstrap to reach them
+        // would test the mock.
+        'src/api/main.ts',
+        'src/worker/main.ts',
+        'src/**/*.module.ts',
+        // A CLI that is I/O from end to end. It is covered, but by the CI
+        // `migrations` job, which applies the schema against a real
+        // PostgreSQL, asserts re-running is a no-op, then rolls back and
+        // re-applies. Unit tests here would test a mocked pg client.
+        'src/core/db/migrate.ts',
+        // A thin Nest adapter over createPool/createDb, both of which are
+        // tested directly in database.test.ts.
+        'src/core/db/db.service.ts',
+        // Checks the source tree rather than running it.
+        'src/architecture.test.ts',
+      ],
+      // Deliberately low for M0, when most of the tree is wiring. The
+      // thresholds rise as the milestones that carry real logic land; docs
+      // chapter 2.3 expects testing evidence in the evaluation chapter.
+      // A ratchet, not an aspiration: these are at or just below what the
+      // suite achieves today, so coverage cannot silently fall. Raise them as
+      // each milestone lands real logic -- docs chapter 2.3 expects testing
+      // evidence in the evaluation chapter.
+      thresholds: {
+        lines: 90,
+        functions: 90,
+        branches: 90,
+        statements: 90,
+      },
+    },
   },
 });

@@ -30,6 +30,17 @@ describe('describeError', () => {
     expect(describeError(Object.assign(new Error(''), { code: 'ETIMEDOUT' }))).toBe('ETIMEDOUT');
   });
 
+  it('falls back to the error name when there is no message and no code', () => {
+    expect(describeError(new RangeError(''))).toBe('RangeError');
+  });
+
+  it('handles an AggregateError that wraps nothing', () => {
+    expect(describeError(new AggregateError([], ''))).toBe('AggregateError');
+    expect(describeError(new AggregateError([], 'all attempts failed'))).toBe(
+      'all attempts failed',
+    );
+  });
+
   it('never throws on a non-error value', () => {
     expect(describeError('plain string')).toBe('plain string');
     expect(describeError({ weird: true })).toBe('{"weird":true}');
