@@ -1,8 +1,8 @@
 import { Kysely, PostgresDialect } from 'kysely';
 import { Pool } from 'pg';
-import type { AppConfig } from '../config';
-import { describeError } from '../errors';
-import type { Database } from './schema';
+import type { AppConfig } from '../config.js';
+import { describeError } from '../errors.js';
+import type { Database } from './schema.js';
 
 export type Db = Kysely<Database>;
 

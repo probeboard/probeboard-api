@@ -1,10 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
-import { loadConfig } from '../config';
-import { createPool } from './database';
+import { loadConfig } from '../config.js';
+import { createPool } from './database.js';
 
 const cfg = loadConfig({
   DATABASE_URL: 'postgres://u:p@127.0.0.1:1/none',
-} as NodeJS.ProcessEnv);
+});
 
 describe('createPool', () => {
   it('attaches an error listener, without which a database restart is fatal', async () => {

@@ -7,9 +7,9 @@
 import { readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { Pool } from 'pg';
-import { loadConfig } from '../config';
+import { loadConfig } from '../config.js';
 
-const MIGRATIONS_DIR = join(__dirname, 'migrations');
+const MIGRATIONS_DIR = join(import.meta.dirname, 'migrations');
 
 async function ensureRegistry(pool: Pool): Promise<void> {
   await pool.query(`

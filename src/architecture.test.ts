@@ -14,7 +14,7 @@ import { describe, expect, it } from 'vitest';
  * documented. See docs ADR-0006.
  */
 
-const SRC = join(__dirname);
+const SRC = import.meta.dirname;
 
 function sourceFiles(dir: string): string[] {
   return readdirSync(dir).flatMap((entry) => {
@@ -30,17 +30,15 @@ function importsOf(file: string): string[] {
 
   // Three forms, all of which create a real dependency:
   //   import x from './a'   /   export * from './a'
-  //   import './a'                    (side effect only, no `from`)
+  //   import './a'           (side effect only, no `from`)
   //   require('./a')
   const specifiers = [
     ...[...source.matchAll(/(?:^|\s)(?:import|export)[^'";]*?from\s*'([^']+)'/g)],
     ...[...source.matchAll(/(?:^|\s)import\s*'([^']+)'/g)],
     ...[...source.matchAll(/\brequire\s*\(\s*'([^']+)'\s*\)/g)],
-  ].map((m) => m[1]!);
+  ].map((m) => m[1]);
 
-  return specifiers
-    .filter((s) => s.startsWith('.'))
-    .map((s) => relative(SRC, join(file, '..', s)));
+  return specifiers.filter((s) => s.startsWith('.')).map((s) => relative(SRC, join(file, '..', s)));
 }
 
 function layerOf(pathFromSrc: string): 'core' | 'api' | 'worker' | 'root' {

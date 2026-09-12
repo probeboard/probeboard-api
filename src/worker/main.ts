@@ -1,9 +1,9 @@
 import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import { Logger } from 'nestjs-pino';
-import { loadConfig } from '../core/config';
-import { describeError } from '../core/errors';
-import { WorkerModule } from './worker.module';
+import { loadConfig } from '../core/config.js';
+import { describeError } from '../core/errors.js';
+import { WorkerModule } from './worker.module.js';
 
 /**
  * Resolves when the process is asked to stop. Without this the worker would
@@ -21,6 +21,8 @@ function untilShutdown(): Promise<NodeJS.Signals> {
     // calls process.once('SIGTERM', ...) exits immediately. From M4 the
     // scheduler's own timers would also keep it alive, but the worker must not
     // depend on a later milestone to stay running.
+    // The callback is irrelevant; only the timer's existence matters.
+    // eslint-disable-next-line @typescript-eslint/no-empty-function
     const keepAlive = setInterval(() => {}, 1 << 30);
 
     const signals: NodeJS.Signals[] = ['SIGTERM', 'SIGINT'];

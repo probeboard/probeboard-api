@@ -1,5 +1,5 @@
 import type { Params } from 'nestjs-pino';
-import { config } from './config';
+import { config } from './config.js';
 
 /**
  * Structured logging. Messages are static; variable data goes in fields, so

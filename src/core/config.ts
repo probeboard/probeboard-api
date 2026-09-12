@@ -15,7 +15,11 @@ const schema = z.object({
   DATABASE_POOL_MAX: z.coerce.number().int().min(1).max(100).default(10),
 
   // Probe execution limits (NFR-13, FR-8)
-  PROBE_MAX_BODY_BYTES: z.coerce.number().int().min(1024).default(64 * 1024),
+  PROBE_MAX_BODY_BYTES: z.coerce
+    .number()
+    .int()
+    .min(1024)
+    .default(64 * 1024),
   PROBE_MAX_TIMEOUT_MS: z.coerce.number().int().min(1000).default(30_000),
 
   // Scheduler (NFR-2, NFR-3, NFR-4)
@@ -23,7 +27,10 @@ const schema = z.object({
   // ambiguous value makes it impossible to tell which worker holds a claim or
   // which one died (NFR-3, NFR-4). PID alone is not enough -- every container
   // runs its process as PID 1, so N containers would all report the same id.
-  WORKER_ID: z.string().min(1).default(() => `${hostname()}-${process.pid}`),
+  WORKER_ID: z
+    .string()
+    .min(1)
+    .default(() => `${hostname()}-${process.pid}`),
   SCHEDULER_TICK_MS: z.coerce.number().int().min(100).default(1000),
   SCHEDULER_BATCH_SIZE: z.coerce.number().int().min(1).default(100),
   SCHEDULER_LEASE_MS: z.coerce.number().int().min(1000).default(60_000),

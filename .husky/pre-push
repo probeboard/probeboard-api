@@ -1,0 +1,3 @@
+# Last gate before the change leaves the machine. Same checks CI runs, so a
+# red pipeline is a surprise rather than a routine.
+npm run verify

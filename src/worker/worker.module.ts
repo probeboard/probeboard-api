@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
 import { LoggerModule } from 'nestjs-pino';
-import { loggerOptions } from '../core/logging';
-import { DbModule } from '../core/db/db.module';
+import { loggerOptions } from '../core/logging.js';
+import { DbModule } from '../core/db/db.module.js';
 
 /**
  * Probe worker. Same codebase as the API, different entrypoint and module set
