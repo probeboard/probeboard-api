@@ -1,7 +1,9 @@
 import { Module } from '@nestjs/common';
 import { LoggerModule } from 'nestjs-pino';
-import { loggerOptions } from '../core/logging/index.js';
+import { APP_CONFIG, ConfigModule } from '../core/config/config.module.js';
+import type { AppConfig } from '../core/config/schema.js';
 import { DbModule } from '../core/db/db.module.js';
+import { loggerOptions } from '../core/logging/index.js';
 
 /**
  * Probe worker. Same codebase as the API, different entrypoint and module set
@@ -10,6 +12,13 @@ import { DbModule } from '../core/db/db.module.js';
  * Loops are added in M4 (scheduler), M5 (rollup), M6 (evaluator), M7 (dispatcher).
  */
 @Module({
-  imports: [LoggerModule.forRoot(loggerOptions('worker')), DbModule],
+  imports: [
+    ConfigModule,
+    LoggerModule.forRootAsync({
+      inject: [APP_CONFIG],
+      useFactory: (cfg: AppConfig) => loggerOptions('worker', cfg),
+    }),
+    DbModule,
+  ],
 })
 export class WorkerModule {}

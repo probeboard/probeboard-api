@@ -17,6 +17,8 @@ const api = {
   // ways that turn a typo into a silent misconfiguration: "64kbb" becomes 64
   // bytes and "abc" becomes no limit at all. A bad value must stop the process
   // at boot, not quietly remove the cap.
+  // Bounds the readiness check's response, not the query itself.
+  HEALTH_TIMEOUT_MS: z.coerce.number().int().min(100).max(30_000).default(3000),
   API_BODY_LIMIT: z
     .string()
     .default('64kb')

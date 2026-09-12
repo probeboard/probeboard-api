@@ -2,13 +2,14 @@ import { type AppConfig, configSchema } from './schema.js';
 
 export type { AppConfig } from './schema.js';
 export { configSchema } from './schema.js';
-
-let cached: AppConfig | undefined;
+export { APP_CONFIG, ConfigModule } from './config.module.js';
 
 /**
- * Parses and validates the environment. Called as the first statement of both
- * entrypoints, so an invalid value stops the process at boot rather than
- * surfacing later at first use.
+ * Parses and validates the environment.
+ *
+ * Called as the first statement of both entrypoints so an invalid value stops
+ * the process at boot, and again by ConfigModule to provide the value through
+ * dependency injection. It is pure, so the two calls agree.
  */
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   const parsed = configSchema.safeParse(env);
@@ -22,14 +23,4 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   }
 
   return parsed.data;
-}
-
-export function config(): AppConfig {
-  cached ??= loadConfig();
-  return cached;
-}
-
-/** Test seam: drop the memoised config so a test can load a different env. */
-export function resetConfigCache(): void {
-  cached = undefined;
 }
