@@ -1,0 +1,152 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# A new push to a PR makes the previous run irrelevant.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  # Fast feedback: these need no services and fail in seconds.
+  static:
+    name: Format, lint, types
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run format:check
+      - run: npm run lint
+      - run: npm run typecheck
+
+  test:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+
+  # Proves the schema actually applies, that re-running is a no-op, and that
+  # every migration can be rolled back. A down migration nobody runs is a
+  # migration that does not work.
+  migrations:
+    name: Migrations against PostgreSQL
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: probeboard
+          POSTGRES_PASSWORD: probeboard
+          POSTGRES_DB: probeboard
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U probeboard -d probeboard"
+          --health-interval 5s --health-timeout 3s --health-retries 10
+    env:
+      DATABASE_URL: postgres://probeboard:probeboard@localhost:5432/probeboard
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+
+      - name: Apply
+        run: npm run migrate
+
+      - name: Re-apply is a no-op
+        run: |
+          output=$(npm run migrate 2>&1)
+          echo "$output"
+          echo "$output" | grep -q "nothing to apply" || {
+            echo "::error::re-running migrations was not a no-op"; exit 1; }
+
+      - name: Roll back and re-apply
+        run: |
+          npm run migrate:down
+          npm run migrate
+
+  # The deployment artefact has to build, and the stack has to come up. This is
+  # NFR-16 checked on every change rather than by hand.
+  stack:
+    name: Container stack
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Start the whole stack from one command
+        run: docker compose up -d --build --scale worker=2
+
+      - name: Wait for the api to report ready
+        run: |
+          for i in $(seq 1 60); do
+            if curl -fsS http://localhost:3000/readyz >/dev/null 2>&1; then
+              echo "ready after ${i}s"; exit 0
+            fi
+            sleep 1
+          done
+          echo "::error::api never became ready"
+          docker compose ps -a
+          docker compose logs
+          exit 1
+
+      - name: Liveness and readiness
+        run: |
+          curl -fsS http://localhost:3000/healthz | grep -q '"status":"ok"'
+          curl -fsS http://localhost:3000/readyz  | grep -q '"database":"ok"'
+
+      - name: Migrations ran, schema is present
+        run: |
+          types=$(docker compose exec -T postgres psql -U probeboard -d probeboard -tAc \
+            "SELECT count(DISTINCT typname) FROM pg_type t JOIN pg_enum e ON e.enumtypid=t.oid")
+          [ "$types" = "4" ] || { echo "::error::expected 4 enum types, got $types"; exit 1; }
+
+      - name: Each worker has a distinct identity
+        run: |
+          ids=$(docker compose logs worker --no-log-prefix \
+            | grep -o '"workerId":"[^"]*"' | sort -u | wc -l)
+          [ "$ids" = "2" ] || { echo "::error::expected 2 distinct worker ids, got $ids"; exit 1; }
+
+      # Regression guard: an unhandled pool 'error' event is fatal in Node, so
+      # a database restart used to terminate the api and every worker at once.
+      - name: Survives a database restart
+        run: |
+          docker compose restart postgres
+          sleep 10
+          docker compose ps api     --status running --format '{{.Name}}' | grep -q . \
+            || { echo "::error::api died when the database restarted"; docker compose logs api; exit 1; }
+          [ "$(docker compose ps worker --status running --format '{{.Name}}' | wc -l)" = "2" ] \
+            || { echo "::error::workers died when the database restarted"; exit 1; }
+          curl -fsS --retry 10 --retry-delay 2 --retry-all-errors http://localhost:3000/readyz \
+            | grep -q '"database":"ok"'
+
+      - name: Workers stop gracefully
+        run: |
+          docker compose stop worker
+          code=$(docker inspect probeboard-worker-1 --format '{{.State.ExitCode}}')
+          [ "$code" = "0" ] || { echo "::error::worker exited with $code, expected 0"; exit 1; }
+
+      - name: Diagnostics on failure
+        if: failure()
+        run: docker compose ps -a && docker compose logs
+
+      - name: Tear down
+        if: always()
+        run: docker compose down -v
