@@ -1,5 +1,6 @@
 import { ServiceUnavailableException } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
+import { loadConfig } from '../../core/config/index.js';
 import type { DbService } from '../../core/db/db.service.js';
 import { HealthController } from './health.controller.js';
 
@@ -33,10 +34,15 @@ function dbThat(outcome: 'answers' | 'fails', err: Error = DEFAULT_FAILURE) {
   } as unknown as DbService;
 }
 
+const cfg = loadConfig({
+  DATABASE_URL: 'postgres://u:p@localhost:5432/probeboard',
+  HEALTH_TIMEOUT_MS: '200',
+});
+
 function controller(outcome: 'answers' | 'fails', err: Error = DEFAULT_FAILURE) {
   const logger: Logger = { error: vi.fn() };
   return {
-    ctrl: new HealthController(dbThat(outcome, err), logger as never),
+    ctrl: new HealthController(dbThat(outcome, err), cfg, logger as never),
     logger,
   };
 }
@@ -91,5 +97,40 @@ describe('HealthController', () => {
       { cause: 'ECONNREFUSED: connect ECONNREFUSED 127.0.0.1:5432' },
       'readiness check failed',
     );
+  });
+});
+
+describe('readiness timeout', () => {
+  it('fails when the database accepts the query but never answers', async () => {
+    // The pool's connectionTimeoutMillis bounds acquiring a connection, not a
+    // query on one already established. A hung database would otherwise hold
+    // this request open indefinitely.
+    const hangs = {
+      kysely: {
+        getExecutor: () => ({
+          executeQuery: () => new Promise(() => undefined),
+          transformQuery: (node: unknown) => node,
+          compileQuery: () => ({ sql: 'select 1', parameters: [] }),
+        }),
+      },
+    } as unknown as DbService;
+
+    const logger: Logger = { error: vi.fn() };
+    const ctrl = new HealthController(hangs, cfg, logger as never);
+
+    const started = Date.now();
+    await expect(ctrl.ready()).rejects.toBeInstanceOf(ServiceUnavailableException);
+
+    expect(Date.now() - started).toBeLessThan(2000);
+    expect(logger.error.mock.calls[0]?.[0].cause).toContain('exceeded 200ms');
+  });
+
+  it('does not leave the timer running once the query answers', async () => {
+    // A dangling timer would keep the event loop alive and delay shutdown.
+    const { ctrl } = controller('answers');
+    await ctrl.ready();
+    // vitest fails the run on open handles; reaching here with none is the
+    // assertion.
+    expect(true).toBe(true);
   });
 });

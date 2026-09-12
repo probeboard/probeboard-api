@@ -4,6 +4,7 @@ import type { AppConfig } from '../core/config/index.js';
 import { NotFoundError } from '../core/errors/app-error.js';
 import { toErrorResponse } from '../core/errors/http-mapping.js';
 import { ErrorFilter } from './common/filters/error.filter.js';
+import { HEALTH_PATHS } from './health/paths.js';
 
 export const API_VERSION_PREFIX = 'v1';
 
@@ -16,7 +17,7 @@ export const API_VERSION_PREFIX = 'v1';
  * prefix rather than one controller -- which is exactly what it did, serving
  * `/monitors` instead of `/v1/monitors`.
  */
-export const UNVERSIONED_PATHS = ['healthz', 'readyz'];
+export const UNVERSIONED_PATHS = HEALTH_PATHS;
 
 /**
  * Applies every cross-cutting concern to the application.
