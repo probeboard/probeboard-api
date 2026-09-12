@@ -7,6 +7,8 @@ import type { SessionRepository } from './session.repository.js';
 const cfg = loadConfig({
   DATABASE_URL: 'postgres://u:p@localhost:5432/probeboard',
   AUTH_ATTEMPT_RETENTION_MS: '3600000',
+  AUTH_SWEEP_INTERVAL_MS: '900000',
+  SESSION_RETENTION_DAYS: '7',
 });
 
 function make(overrides: { sessions?: number | Error; attempts?: number | Error } = {}) {
@@ -84,8 +86,37 @@ describe('lifecycle', () => {
 
     service.onModuleInit();
 
-    expect(spy).toHaveBeenCalledWith(expect.any(Function), 3_600_000);
+    expect(spy).toHaveBeenCalledWith(expect.any(Function), 900_000);
     expect(unref).toHaveBeenCalledOnce();
+    spy.mockRestore();
+  });
+
+  it('sweeps once at startup, so a frequently restarted instance still runs it', async () => {
+    // With the interval alone, an instance restarting more often than the
+    // sweep period would never reach the first callback.
+    const { service, sessions, attempts } = make();
+    const spy = vi.spyOn(global, 'setInterval').mockReturnValue({ unref: vi.fn() } as never);
+
+    service.onModuleInit();
+    await vi.waitFor(() => {
+      expect(sessions.pruneExpired).toHaveBeenCalled();
+    });
+    expect(attempts.pruneBefore).toHaveBeenCalled();
+
+    spy.mockRestore();
+  });
+
+  it('does not let a failing startup sweep break boot', async () => {
+    const { service } = make({ sessions: new Error('database is gone') });
+    const spy = vi.spyOn(global, 'setInterval').mockReturnValue({ unref: vi.fn() } as never);
+
+    expect(() => {
+      service.onModuleInit();
+    }).not.toThrow();
+    await vi.waitFor(() => {
+      expect(true).toBe(true);
+    });
+
     spy.mockRestore();
   });
 

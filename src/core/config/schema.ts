@@ -67,6 +67,12 @@ const auth = {
   // How long an expired or revoked session is kept before it is swept. Kept
   // rather than deleted at expiry so an operator can still answer "was this
   // session live at the time?" after an incident.
+  // How often housekeeping runs, deliberately independent of how old a row
+  // must be to be swept. Tying the two together meant the sweep never ran at
+  // all when the process restarted more often than the retention period --
+  // which, at a 24-hour default, is every ordinary deploy.
+  AUTH_SWEEP_INTERVAL_MS: z.coerce.number().int().min(60_000).default(3600_000),
+
   SESSION_RETENTION_DAYS: z.coerce.number().int().min(1).max(3650).default(30),
 };
 

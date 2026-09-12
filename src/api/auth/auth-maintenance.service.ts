@@ -29,8 +29,17 @@ export class AuthMaintenanceService implements OnModuleInit, OnModuleDestroy {
   ) {}
 
   onModuleInit(): void {
+    // Once at startup, because an instance that restarts more often than the
+    // sweep interval would otherwise never reach the first callback and both
+    // tables would grow without bound. Not awaited: boot must not wait on
+    // housekeeping, and sweep() never throws.
+    void this.sweep();
+
+    // The interval is its own setting rather than the retention period: those
+    // are different questions, and tying them together is what created the
+    // gap above.
+    this.timer = setInterval(() => void this.sweep(), this.cfg.AUTH_SWEEP_INTERVAL_MS);
     // unref so a pending sweep never holds the process open during shutdown.
-    this.timer = setInterval(() => void this.sweep(), this.cfg.AUTH_ATTEMPT_RETENTION_MS);
     this.timer.unref();
   }
 
