@@ -25,7 +25,8 @@
     "format:check": "prettier --check .",
     "verify": "npm run format:check && npm run lint && npm run typecheck && npm test",
     "prepare": "husky",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "test:int": "vitest run --config vitest.integration.mts"
   },
   "dependencies": {
     "@nestjs/common": "^12.0.1",

@@ -41,12 +41,17 @@ function importsOf(file: string): string[] {
   return specifiers.filter((s) => s.startsWith('.')).map((s) => relative(SRC, join(file, '..', s)));
 }
 
-function layerOf(pathFromSrc: string): 'core' | 'api' | 'worker' | 'root' {
+type Layer = 'core' | 'api' | 'worker' | 'testing' | 'root';
+
+function layerOf(pathFromSrc: string): Layer {
   if (pathFromSrc.startsWith('core')) return 'core';
   if (pathFromSrc.startsWith('api')) return 'api';
   if (pathFromSrc.startsWith('worker')) return 'worker';
+  if (pathFromSrc.startsWith('testing')) return 'testing';
   return 'root';
 }
+
+const isTest = (pathFromSrc: string) => pathFromSrc.endsWith('.test.ts');
 
 const files = sourceFiles(SRC).map((f) => ({
   path: relative(SRC, f),
@@ -59,10 +64,15 @@ describe('layer boundaries', () => {
   });
 
   it('core depends on nothing outside core', () => {
+    // A core *test* may reach for src/testing; the rule below covers that
+    // separately. Core production code may reach for nothing at all.
     const violations = files
       .filter((f) => layerOf(f.path) === 'core')
       .flatMap((f) =>
-        f.imports.filter((i) => layerOf(i) !== 'core').map((i) => `${f.path} -> ${i}`),
+        f.imports
+          .filter((i) => layerOf(i) !== 'core')
+          .filter((i) => !(isTest(f.path) && layerOf(i) === 'testing'))
+          .map((i) => `${f.path} -> ${i}`),
       );
     expect(violations).toEqual([]);
   });
@@ -81,6 +91,17 @@ describe('layer boundaries', () => {
       .filter((f) => layerOf(f.path) === 'worker')
       .flatMap((f) =>
         f.imports.filter((i) => layerOf(i) === 'api').map((i) => `${f.path} -> ${i}`),
+      );
+    expect(violations).toEqual([]);
+  });
+
+  it('only tests import the test helpers', () => {
+    // src/testing is excluded from the build. Shipping code importing it would
+    // compile locally and fail in the image.
+    const violations = files
+      .filter((f) => !isTest(f.path) && layerOf(f.path) !== 'testing')
+      .flatMap((f) =>
+        f.imports.filter((i) => layerOf(i) === 'testing').map((i) => `${f.path} -> ${i}`),
       );
     expect(violations).toEqual([]);
   });

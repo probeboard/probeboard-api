@@ -88,6 +88,36 @@ jobs:
           npm run migrate:down
           npm run migrate
 
+  # Repositories and, from M4, the claim queries are tested against a real
+  # PostgreSQL. `ON CONFLICT`, `FOR UPDATE SKIP LOCKED` and transactional
+  # visibility are the behaviour under test; a mock would only assert that we
+  # called the mock.
+  integration:
+    name: Integration tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: probeboard
+          POSTGRES_PASSWORD: probeboard
+          POSTGRES_DB: probeboard_test
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U probeboard -d probeboard_test"
+          --health-interval 5s --health-timeout 3s --health-retries 10
+    env:
+      TEST_DATABASE_URL: postgres://probeboard:probeboard@localhost:5432/probeboard_test
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run test:int
+
   # The deployment artefact has to build, and the stack has to come up. This is
   # NFR-16 checked on every change rather than by hand.
   stack:
