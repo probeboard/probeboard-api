@@ -1,22 +1,23 @@
 import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
+import type { NestExpressApplication } from '@nestjs/platform-express';
 import { Logger } from 'nestjs-pino';
+import { loadConfig } from '../core/config/index.js';
+import { describeError } from '../core/errors/describe.js';
 import { AppModule } from './api.module.js';
-import { loadConfig } from '../core/config.js';
-import { describeError } from '../core/errors.js';
+import { configureApp } from './bootstrap.js';
 
 async function bootstrap(): Promise<void> {
   // Validate the environment before anything else is constructed, so a bad
   // value fails at boot rather than at first use (docs §8).
   const cfg = loadConfig();
 
-  const app = await NestFactory.create(AppModule, { bufferLogs: true });
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, { bufferLogs: true });
   app.useLogger(app.get(Logger));
-  app.enableShutdownHooks();
+
+  configureApp(app, cfg);
 
   await app.listen(cfg.API_PORT);
-
-  // Static message, variable data in fields.
   app.get(Logger).log({ port: cfg.API_PORT, env: cfg.NODE_ENV, msg: 'api listening' });
 }
 

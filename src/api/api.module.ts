@@ -1,12 +1,20 @@
 import { Module } from '@nestjs/common';
 import { LoggerModule } from 'nestjs-pino';
-import { loggerOptions } from '../core/logging.js';
 import { DbModule } from '../core/db/db.module.js';
-import { HealthController } from './health/health.controller.js';
+import { loggerOptions } from '../core/logging/index.js';
+import { NotFoundModule } from './common/controllers/not-found.module.js';
+import { ErrorFilter } from './common/filters/error.filter.js';
+import { HealthModule } from './health/health.module.js';
 
 /** HTTP API. Never probes — that is the worker's job (docs §7.1). */
 @Module({
-  imports: [LoggerModule.forRoot(loggerOptions('api')), DbModule],
-  controllers: [HealthController],
+  imports: [
+    LoggerModule.forRoot(loggerOptions('api')),
+    DbModule,
+    HealthModule,
+    // Last: its wildcard route would otherwise shadow every route after it.
+    NotFoundModule,
+  ],
+  providers: [ErrorFilter],
 })
 export class AppModule {}

@@ -1,7 +1,7 @@
 import { Controller, Get, ServiceUnavailableException } from '@nestjs/common';
 import { sql } from 'kysely';
 import { InjectPinoLogger, type PinoLogger } from 'nestjs-pino';
-import { describeError } from '../../core/errors.js';
+import { describeError } from '../../core/errors/describe.js';
 import { DbService } from '../../core/db/db.service.js';
 
 @Controller()
