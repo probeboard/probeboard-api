@@ -1,7 +1,9 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { Algorithm, hash, verify } from '@node-rs/argon2';
+import { InjectPinoLogger, type PinoLogger } from 'nestjs-pino';
 import { APP_CONFIG } from '../../core/config/config.module.js';
 import type { AppConfig } from '../../core/config/schema.js';
+import { describeError } from '../../core/errors/describe.js';
 
 /**
  * Password hashing (NFR-10).
@@ -26,7 +28,10 @@ export class PasswordService {
    */
   private dummyHash?: Promise<string>;
 
-  constructor(@Inject(APP_CONFIG) private readonly cfg: AppConfig) {}
+  constructor(
+    @Inject(APP_CONFIG) private readonly cfg: AppConfig,
+    @InjectPinoLogger(PasswordService.name) private readonly logger: PinoLogger,
+  ) {}
 
   private get options() {
     return {
@@ -42,14 +47,24 @@ export class PasswordService {
   }
 
   /**
-   * Verifies a password, returning false rather than throwing on a malformed
-   * or unreadable stored hash — a corrupted row must fail the login, not the
-   * request.
+   * Verifies a password.
+   *
+   * A stored hash that cannot be read — corrupted, truncated, or written by a
+   * different algorithm — fails the login rather than the request. But the
+   * cause is logged: without it, authentication could fail permanently for one
+   * user, or for everyone under memory pressure, while operators saw nothing
+   * but wrong-password responses.
+   *
+   * The failure is not propagated, deliberately. Every rejected login must look
+   * the same from outside (A-2), and a 500 on some accounts and a 401 on others
+   * is exactly the signal that requirement exists to remove. The log is where
+   * an operator learns something is wrong.
    */
   async verify(storedHash: string, password: string): Promise<boolean> {
     try {
       return await verify(storedHash, password);
-    } catch {
+    } catch (err) {
+      this.logger.error({ cause: describeError(err) }, 'password verification failed unexpectedly');
       return false;
     }
   }

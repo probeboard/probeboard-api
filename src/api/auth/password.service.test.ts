@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { loadConfig } from '../../core/config/index.js';
 import { PasswordService } from './password.service.js';
 
@@ -10,7 +10,8 @@ const cfg = loadConfig({
   ARGON2_TIME_COST: '1',
 });
 
-const service = new PasswordService(cfg);
+const logger = { error: vi.fn() };
+const service = new PasswordService(cfg, logger as never);
 
 describe('PasswordService', () => {
   it('produces an argon2id hash, as NFR-10 requires', async () => {
@@ -51,7 +52,7 @@ describe('PasswordService', () => {
     const stored = await service.hash('x');
     expect(stored).toMatch(/\$m=8192,t=1,p=1\$/);
 
-    const stronger = new PasswordService({ ...cfg, ARGON2_TIME_COST: 2 });
+    const stronger = new PasswordService({ ...cfg, ARGON2_TIME_COST: 2 }, logger as never);
     // A hash made with the old cost still verifies under the new setting.
     expect(await stronger.verify(stored, 'x')).toBe(true);
   });
@@ -61,6 +62,19 @@ describe('PasswordService', () => {
     for (const bad of ['', 'not-a-hash', '$argon2id$garbage', '$2b$10$bcryptstyle']) {
       expect(await service.verify(bad, 'anything')).toBe(false);
     }
+  });
+
+  it('logs why a verification failed instead of swallowing it', async () => {
+    // Otherwise authentication can fail permanently -- for one corrupted row,
+    // or for everyone under memory pressure -- while operators see nothing but
+    // wrong-password responses.
+    logger.error.mockClear();
+
+    expect(await service.verify('$argon2id$garbage', 'anything')).toBe(false);
+
+    expect(logger.error).toHaveBeenCalledOnce();
+    expect(logger.error.mock.calls[0]?.[1]).toBe('password verification failed unexpectedly');
+    expect(logger.error.mock.calls[0]?.[0].cause).toBeTruthy();
   });
 
   it('verifyDummy always fails but still spends the work', async () => {
