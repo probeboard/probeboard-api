@@ -132,19 +132,25 @@ is tested.
 
 ```
 src/
-  core/                 shared by both processes
-    config.ts             environment schema, validated at boot
-    errors.ts             error description (AggregateError unwrapping)
-    logging.ts            structured logging setup
-    db/                   pool, Kysely instance, migration runner, migrations
-  api/                  api only
-    main.ts               entrypoint
-    api.module.ts
-    health/               liveness and readiness
-  worker/               worker only
-    main.ts               entrypoint (long-running, graceful shutdown)
-    worker.module.ts
-  architecture.test.ts  enforces the rule below
+  core/                     shared by both processes
+    config/                   environment schema + loader, validated at boot
+    errors/                   error types, description, HTTP mapping
+    logging/                  redaction list + pino options
+    db/                       pool, Kysely, types, module
+      migrator/                 registry, file discovery, runner, CLI
+      migrations/               *.up.sql / *.down.sql
+  api/                      api only
+    main.ts                   entrypoint
+    bootstrap.ts              prefix, filters, body limit, shutdown hooks
+    common/
+      filters/                  one response shape for every failure
+      pipes/                    zod validation at the trust boundary
+      controllers/              JSON catch-all for unmatched routes
+    health/                   liveness and readiness
+  worker/                   worker only
+    main.ts                   entrypoint
+    lifecycle/                keep-alive and graceful shutdown
+  architecture.test.ts      enforces the rule below
 ```
 
 ```
@@ -158,16 +164,35 @@ This is **checked, not merely documented**:
 import — including bare side-effect imports and `require()`, not only `from`
 clauses — and fails on any edge that breaks the rule. An unenforced convention
 decays, and splitting this repository later must stay a directory move rather
-than an untangling exercise.
+than an untangling exercise
+([ADR-0006](https://github.com/Levon0Asatryan/probeboard-docs/blob/main/en/adr/0006-one-repo-split-ready.md)).
 
 Planned modules, in milestone order: `worker/probing/` (M3),
 `worker/scheduler/` (M4), `worker/rollup/` (M5), `worker/incidents/` (M6),
 `worker/notifications/` (M7), `core/stats/` (M8, shared — the worker writes
 buckets, the api interpolates percentiles from them).
 
-`probing/` will depend on nothing but `core` — keeping the probe executor a pure
-function is what makes it testable against a local server that hangs, resets, or
-serves a bad certificate.
+`probing/` will depend on nothing but `core` — keeping the probe executor a
+pure function is what makes it testable against a local server that hangs,
+resets, or serves a bad certificate.
+
+## HTTP surface
+
+Everything is served under **`/v1`**, except the health endpoints, which an
+orchestrator's probe should not have to version.
+
+Every failure returns the same shape, and never internal detail:
+
+```json
+{ "code": "NOT_FOUND", "message": "route not found" }
+```
+
+Unmatched routes included — otherwise Express answers with an HTML page, which
+is the wrong content type for a JSON API and carries no code a client can
+branch on.
+
+Request bodies are capped at `API_BODY_LIMIT` (default 64kb) and rejected with
+`413` beyond it.
 
 ## Conventions
 
@@ -187,10 +212,23 @@ serves a bad certificate.
 - **Tests**: every bug fix ships with the test that fails without it. No focused
   or skipped tests get committed.
 
+## Quality gates
+
+`pre-commit` formats and lints staged files, then typechecks and tests the
+whole tree. `pre-push` runs `npm run verify`. CI repeats all of it on every
+pull request, plus migrations against a real PostgreSQL and the full container
+stack.
+
+Coverage thresholds are a floor that cannot silently slip, not an aspiration.
+Files excluded from coverage each carry the reason in
+[`vitest.config.mts`](vitest.config.mts) — generally because they are covered
+by the CI stack or migrations job instead.
+
 ## Status
 
 **M0 complete** — skeleton, config validation, database, migrations, health
-endpoints, both entrypoints, containerised stack.
+endpoints, both entrypoints, containerised stack, lint/format/hooks/CI,
+versioned HTTP surface with uniform error handling.
 
 Next: **M1 — accounts**. See
 [chapter 8](https://github.com/Levon0Asatryan/probeboard-docs/blob/main/en/08-plan.md).

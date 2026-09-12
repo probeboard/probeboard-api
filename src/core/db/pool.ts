@@ -1,10 +1,6 @@
-import { Kysely, PostgresDialect } from 'kysely';
 import { Pool } from 'pg';
-import type { AppConfig } from '../config.js';
-import { describeError } from '../errors.js';
-import type { Database } from './schema.js';
-
-export type Db = Kysely<Database>;
+import type { AppConfig } from '../config/index.js';
+import { describeError } from '../errors/describe.js';
 
 /** Reported when an idle pooled connection dies. */
 export type PoolErrorHandler = (message: string, fields: { cause: string }) => void;
@@ -20,9 +16,9 @@ export function createPool(cfg: AppConfig, onError: PoolErrorHandler): Pool {
 
   // Required, not optional. pg emits 'error' on the pool when an *idle*
   // client's connection dies -- a database restart, a failover, a dropped
-  // network link. Node escalates an unhandled 'error' event on an EventEmitter
-  // into a fatal uncaught exception, so without this listener a routine
-  // database restart terminates the api and every worker simultaneously.
+  // link. Node escalates an unhandled 'error' event on an EventEmitter into a
+  // fatal uncaught exception, so without this listener a routine database
+  // restart terminates the api and every worker simultaneously.
   //
   // The pool discards the broken client on its own; later queries open a new
   // connection. So this handler records the event and does nothing else.
@@ -31,8 +27,4 @@ export function createPool(cfg: AppConfig, onError: PoolErrorHandler): Pool {
   });
 
   return pool;
-}
-
-export function createDb(pool: Pool): Db {
-  return new Kysely<Database>({ dialect: new PostgresDialect({ pool }) });
 }

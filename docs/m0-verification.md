@@ -109,6 +109,43 @@ such as `import '../api/api.module'`. After widening it to cover bare imports
 and `require()`, the same violation failed the test with the offending edge
 named. A guard that has never been seen to fail is not known to work.
 
+### 5. Adding Husky broke the container build
+
+`docker compose build` failed with exit 127. The `prepare` script runs husky
+on every `npm ci`, but the runtime stage installs with `--omit=dev`, so husky
+is absent there. Both stages now install with `--ignore-scripts`; neither needs
+lifecycle scripts, and it keeps arbitrary install scripts out of the runtime
+image.
+
+### 6. Unmatched routes returned HTML
+
+A request to a path no route matched was answered by Express with its own HTML
+error page -- markup from a JSON API, carrying no machine-readable code, which
+contradicts the contract in docs chapter 7.
+
+Fixed with a catch-all controller that throws a mapped `NotFoundError`,
+imported last so its wildcard does not shadow real routes, and excluded from
+the version prefix so unversioned paths are covered too. Verified against a
+running container: `/v1/nope`, `/nope`, `/v1/monitors/123` and `/admin` all
+return `{"code":"NOT_FOUND","message":"route not found"}`.
+
+## Restructuring
+
+The tree was reorganised into `core/{config,errors,logging,db}`, `api/` and
+`worker/` after the first acceptance, and everything above was re-run against
+the restructured code.
+
+Splitting the migration runner had an effect beyond tidiness. The old
+`migrate.ts` was excluded from coverage wholesale as "a CLI that is I/O from
+end to end", and that exclusion was hiding genuinely testable logic. With only
+the CLI excluded, seventeen tests now cover behaviour that was asserted
+nowhere: that every migration has both halves, that names are zero-padded so
+ordering survives the tenth migration, that the registry row is written inside
+the same transaction that applied the migration, and that a failure rolls back
+and releases the client.
+
+Final state: 84 tests, 100% of statements, branches and lines.
+
 ## Not yet proven
 
 - The `Dockerfile` runs as the `node` user but this was not tested against a

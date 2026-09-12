@@ -14,8 +14,8 @@
     "start:worker": "node dist/worker/main.js",
     "dev:api": "tsx watch --env-file-if-exists=.env src/api/main.ts",
     "dev:worker": "tsx watch --env-file-if-exists=.env src/worker/main.ts",
-    "migrate": "tsx --env-file-if-exists=.env src/core/db/migrate.ts up",
-    "migrate:down": "tsx --env-file-if-exists=.env src/core/db/migrate.ts down",
+    "migrate": "tsx --env-file-if-exists=.env src/core/db/migrator/cli.ts up",
+    "migrate:down": "tsx --env-file-if-exists=.env src/core/db/migrator/cli.ts down",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc -p tsconfig.json --noEmit",
@@ -24,7 +24,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "verify": "npm run format:check && npm run lint && npm run typecheck && npm test",
-    "prepare": "husky"
+    "prepare": "husky",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@nestjs/common": "^12.0.1",
@@ -41,8 +42,11 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@nestjs/testing": "^12.0.1",
+    "@types/express": "^5.0.6",
     "@types/node": "^22.10.0",
     "@types/pg": "^8.11.10",
+    "@vitest/coverage-v8": "^5.0.0",
     "eslint": "^10.10.0",
     "eslint-config-prettier": "^10.1.8",
     "husky": "^9.1.7",

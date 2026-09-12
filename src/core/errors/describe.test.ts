@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { describeError } from './errors.js';
+import { describeError } from './describe.js';
 
 describe('describeError', () => {
   it('reads a plain error message', () => {
@@ -28,6 +28,17 @@ describe('describeError', () => {
 
   it('falls back to the code when the message is empty', () => {
     expect(describeError(Object.assign(new Error(''), { code: 'ETIMEDOUT' }))).toBe('ETIMEDOUT');
+  });
+
+  it('falls back to the error name when there is no message and no code', () => {
+    expect(describeError(new RangeError(''))).toBe('RangeError');
+  });
+
+  it('handles an AggregateError that wraps nothing', () => {
+    expect(describeError(new AggregateError([], ''))).toBe('AggregateError');
+    expect(describeError(new AggregateError([], 'all attempts failed'))).toBe(
+      'all attempts failed',
+    );
   });
 
   it('never throws on a non-error value', () => {

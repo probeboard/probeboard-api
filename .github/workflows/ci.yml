@@ -39,7 +39,9 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npm test
+      # Coverage thresholds are a floor. Running them here rather than only
+      # locally is what stops the floor from slipping unnoticed.
+      - run: npm run test:coverage
 
   # Proves the schema actually applies, that re-running is a no-op, and that
   # every migration can be rolled back. A down migration nobody runs is a

@@ -55,7 +55,7 @@ export default tseslint.config(
   // The migration runner is a CLI invoked before any logger exists; its output
   // to stdout is its interface.
   {
-    files: ['src/core/db/migrate.ts'],
+    files: ['src/core/db/migrator/cli.ts'],
     rules: { 'no-console': 'off' },
   },
 
@@ -63,6 +63,10 @@ export default tseslint.config(
   {
     files: ['**/*.test.ts'],
     rules: {
+      // vi.fn() mocks are read as properties constantly -- `logger.warn.mock`,
+      // `app.setGlobalPrefix` -- which this rule reports as unbound methods.
+      // In production code the rule is worth keeping; here it is noise.
+      '@typescript-eslint/unbound-method': 'off',
       '@typescript-eslint/no-unsafe-assignment': 'off',
       '@typescript-eslint/no-unsafe-member-access': 'off',
       '@typescript-eslint/no-unsafe-argument': 'off',
