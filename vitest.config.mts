@@ -3,6 +3,7 @@ import { defineConfig } from 'vitest/config';
 export default defineConfig({
   test: {
     include: ['src/**/*.{test,spec}.ts'],
+    exclude: ['src/**/*.int.test.ts', 'node_modules/**'],
     environment: 'node',
     coverage: {
       provider: 'v8',
@@ -29,6 +30,13 @@ export default defineConfig({
         'src/**/index.ts',
         // Checks the source tree rather than running it.
         'src/architecture.test.ts',
+        // Test-only helpers, never shipped.
+        'src/testing/**',
+        // Repositories are database behaviour: ON CONFLICT, unique indexes,
+        // concurrent inserts. They are covered by the *.int.test.ts suite
+        // against a real PostgreSQL, which CI runs as its own job. Unit tests
+        // here would assert that we called a mock.
+        'src/**/*.repository.ts',
       ],
       // Deliberately low for M0, when most of the tree is wiring. The
       // thresholds rise as the milestones that carry real logic land; docs

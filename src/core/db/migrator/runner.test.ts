@@ -1,6 +1,12 @@
 import type { Pool, PoolClient } from 'pg';
 import { describe, expect, it, vi } from 'vitest';
+import { migrationFiles, migrationName } from './files.js';
 import { down, up } from './runner.js';
+
+/** Whatever migrations exist today; the tests must not encode the list. */
+const allMigrations = (await migrationFiles('up')).map(migrationName);
+const firstMigration = allMigrations[0];
+const lastMigration = allMigrations.at(-1)!;
 
 /**
  * A pg Pool recorded rather than mocked: every statement is kept in order, so
@@ -43,13 +49,13 @@ describe('up', () => {
 
     const done = await up(pool, (m) => reported.push(m));
 
-    expect(done).toEqual(['0001_init']);
-    expect(applied.has('0001_init')).toBe(true);
-    expect(reported).toContain('migrations: applied 0001_init');
+    expect(done).toEqual(allMigrations);
+    expect(applied.has(firstMigration)).toBe(true);
+    expect(reported).toContain(`migrations: applied ${firstMigration}`);
   });
 
   it('is a no-op when everything is applied', async () => {
-    const { pool, statements } = fakePool({ applied: ['0001_init'] });
+    const { pool, statements } = fakePool({ applied: allMigrations });
     const reported: string[] = [];
 
     expect(await up(pool, (m) => reported.push(m))).toEqual([]);
@@ -82,7 +88,7 @@ describe('up', () => {
   it('rolls back and stops when a migration fails', async () => {
     const { pool, statements, applied } = fakePool({ failOn: /CREATE TYPE/ });
 
-    await expect(up(pool, silent)).rejects.toThrow(/0001_init \(up\) failed/);
+    await expect(up(pool, silent)).rejects.toThrow(new RegExp(`${firstMigration} \\(up\\) failed`));
     expect(statements).toContain('ROLLBACK');
     expect(statements).not.toContain('COMMIT');
     expect(applied.size).toBe(0);
@@ -97,12 +103,13 @@ describe('up', () => {
 
 describe('down', () => {
   it('rolls back the most recently applied migration', async () => {
-    const { pool, applied } = fakePool({ applied: ['0001_init'] });
+    const { pool, applied } = fakePool({ applied: allMigrations });
     const reported: string[] = [];
 
-    expect(await down(pool, (m) => reported.push(m))).toBe('0001_init');
-    expect(applied.has('0001_init')).toBe(false);
-    expect(reported).toContain('migrations: rolled back 0001_init');
+    // down rolls back the most recent, not the first.
+    expect(await down(pool, (m) => reported.push(m))).toBe(lastMigration);
+    expect(applied.has(lastMigration)).toBe(false);
+    expect(reported).toContain(`migrations: rolled back ${lastMigration}`);
   });
 
   it('is a no-op when nothing has been applied', async () => {
@@ -115,7 +122,7 @@ describe('down', () => {
   });
 
   it('removes the registry row inside the transaction', async () => {
-    const { pool, statements } = fakePool({ applied: ['0001_init'] });
+    const { pool, statements } = fakePool({ applied: allMigrations });
     await down(pool, silent);
 
     const del = statements.findIndex((s) => s.startsWith('DELETE FROM schema_migrations'));
