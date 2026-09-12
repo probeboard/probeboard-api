@@ -36,11 +36,9 @@ function importsOf(file: string): string[] {
     ...[...source.matchAll(/(?:^|\s)(?:import|export)[^'";]*?from\s*'([^']+)'/g)],
     ...[...source.matchAll(/(?:^|\s)import\s*'([^']+)'/g)],
     ...[...source.matchAll(/\brequire\s*\(\s*'([^']+)'\s*\)/g)],
-  ].map((m) => m[1]!);
+  ].map((m) => m[1]);
 
-  return specifiers
-    .filter((s) => s.startsWith('.'))
-    .map((s) => relative(SRC, join(file, '..', s)));
+  return specifiers.filter((s) => s.startsWith('.')).map((s) => relative(SRC, join(file, '..', s)));
 }
 
 function layerOf(pathFromSrc: string): 'core' | 'api' | 'worker' | 'root' {

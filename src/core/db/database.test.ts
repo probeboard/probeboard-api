@@ -4,7 +4,7 @@ import { createPool } from './database';
 
 const cfg = loadConfig({
   DATABASE_URL: 'postgres://u:p@127.0.0.1:1/none',
-} as NodeJS.ProcessEnv);
+});
 
 describe('createPool', () => {
   it('attaches an error listener, without which a database restart is fatal', async () => {
