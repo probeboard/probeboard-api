@@ -1,0 +1,26 @@
+# Keep the build context small and free of local state. The Dockerfile copies
+# only package manifests, tsconfig and src; everything else here is either
+# rebuilt inside the image or must never reach it.
+
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+
+.git/
+.github/
+.husky/
+.vscode/
+
+# Local secrets. Not copied by the Dockerfile, but they have no business in
+# the context tarball either.
+.env
+.env.*
+!.env.example
+
+docs/
+README.md
+*.md
+docker-compose.yml
+Dockerfile
+.dockerignore
