@@ -41,6 +41,12 @@ describe('parseByteSize', () => {
     expect(parseByteSize('-5kb')).toBeUndefined();
   });
 
+  it('rejects a number so large it overflows to Infinity', () => {
+    // The regex accepts any run of digits; Number() gives Infinity past ~309
+    // of them, which would otherwise pass as a valid size.
+    expect(parseByteSize(`${'1'.repeat(400)}kb`)).toBeUndefined();
+  });
+
   it('rejects an unknown unit', () => {
     expect(parseByteSize('5tb')).toBeUndefined();
     expect(parseByteSize('5kib')).toBeUndefined();

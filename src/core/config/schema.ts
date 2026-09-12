@@ -30,6 +30,41 @@ const api = {
     }),
 };
 
+/**
+ * Authentication (NFR-10, NFR-14). Only the api reads these.
+ *
+ * The Argon2 costs are configuration rather than constants so they can be
+ * raised to match the deployment target: the figure that belongs in the
+ * evaluation chapter is measured there, not on a developer laptop. The
+ * defaults are OWASP's current minimum for Argon2id.
+ */
+const auth = {
+  ARGON2_MEMORY_KIB: z.coerce.number().int().min(8192).default(19456),
+  ARGON2_TIME_COST: z.coerce.number().int().min(1).default(2),
+  ARGON2_PARALLELISM: z.coerce.number().int().min(1).max(16).default(1),
+
+  PASSWORD_MIN_LENGTH: z.coerce.number().int().min(8).default(10),
+
+  // Fixed, not sliding: a session ends when it ends, which keeps revocation
+  // reasoning simple (A-3). last_seen_at is recorded but does not extend it.
+  SESSION_TTL_DAYS: z.coerce.number().int().min(1).max(365).default(30),
+
+  // Two different jobs (A-6): throttling one noisy host, and resisting
+  // credential stuffing against one account from many hosts.
+  AUTH_WINDOW_MS: z.coerce
+    .number()
+    .int()
+    .min(1000)
+    .default(15 * 60_000),
+  AUTH_MAX_PER_IP: z.coerce.number().int().min(1).default(20),
+  AUTH_MAX_FAILURES_PER_EMAIL: z.coerce.number().int().min(1).default(5),
+  AUTH_ATTEMPT_RETENTION_MS: z.coerce
+    .number()
+    .int()
+    .min(60_000)
+    .default(24 * 3600_000),
+};
+
 const database = {
   DATABASE_URL: z.url(),
   DATABASE_POOL_MAX: z.coerce.number().int().min(1).max(100).default(10),
@@ -70,6 +105,7 @@ const scheduler = {
 export const configSchema = z.object({
   ...runtime,
   ...api,
+  ...auth,
   ...database,
   ...probing,
   ...scheduler,
