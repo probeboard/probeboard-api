@@ -46,3 +46,53 @@ describe('describeError', () => {
     expect(describeError({ weird: true })).toBe('{"weird":true}');
   });
 });
+
+describe('describeError never throws', () => {
+  // It runs inside error paths, including a pool 'error' listener where an
+  // exception is an uncaught exception and kills the process.
+
+  it('handles a circular object', () => {
+    const a: Record<string, unknown> = { kind: 'weird' };
+    a.self = a;
+    expect(() => describeError(a)).not.toThrow();
+    expect(describeError(a)).toContain('[circular]');
+  });
+
+  it('handles an object whose toJSON throws', () => {
+    const bomb = {
+      toJSON() {
+        throw new Error('boom');
+      },
+    };
+    expect(() => describeError(bomb)).not.toThrow();
+    expect(describeError(bomb)).toBe('[object Object]');
+  });
+
+  it('handles BigInt, which JSON.stringify refuses', () => {
+    expect(describeError(10n)).toBe('10n');
+    expect(describeError({ size: 10n })).toContain('10n');
+  });
+
+  it('handles a getter that throws', () => {
+    const err = new Error('outer');
+    Object.defineProperty(err, 'code', {
+      get() {
+        throw new Error('getter exploded');
+      },
+    });
+    expect(() => describeError(err)).not.toThrow();
+  });
+
+  it('handles values JSON cannot represent at all', () => {
+    expect(() => describeError(Symbol('s'))).not.toThrow();
+    expect(() => describeError(() => undefined)).not.toThrow();
+    expect(describeError(null)).toBe('null');
+    expect(describeError(undefined)).toBe('undefined');
+  });
+
+  it('handles an AggregateError whose members are hostile', () => {
+    const circular: Record<string, unknown> = {};
+    circular.self = circular;
+    expect(() => describeError(new AggregateError([circular, 10n], ''))).not.toThrow();
+  });
+});
