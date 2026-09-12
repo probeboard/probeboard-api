@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { LoggerModule } from 'nestjs-pino';
-import { loggerOptions } from '../core/logging.js';
+import { loggerOptions } from '../core/logging/index.js';
 import { DbModule } from '../core/db/db.module.js';
 
 /**
