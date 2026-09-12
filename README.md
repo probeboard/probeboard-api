@@ -3,9 +3,9 @@
 Backend for **probeboard**, an API monitoring dashboard. This repository holds
 **two processes built from one codebase**:
 
-| Process | Entrypoint | Responsibility |
-|---|---|---|
-| **api** | `src/api/main.ts` | Serves the REST API. Never probes anything. |
+| Process    | Entrypoint           | Responsibility                                                                                                   |
+| ---------- | -------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| **api**    | `src/api/main.ts`    | Serves the REST API. Never probes anything.                                                                      |
 | **worker** | `src/worker/main.ts` | Does the monitoring: schedules probes, executes them, rolls up statistics, opens incidents, sends notifications. |
 
 They are deployed as **separate containers and scaled independently** — one api,
@@ -58,14 +58,14 @@ npm run dev:worker     # separate terminal
 
 ### Scripts
 
-| Script | Does |
-|---|---|
-| `npm run dev:api` / `dev:worker` | Run with reload, loading `.env` |
-| `npm run build` | Compile to `dist/`, including the `.sql` migration files |
-| `npm run start:api` / `start:worker` | Run the compiled output |
-| `npm run migrate` / `migrate:down` | Apply / roll back one migration |
-| `npm test` | Unit tests |
-| `npm run typecheck` | Types only, no emit |
+| Script                               | Does                                                     |
+| ------------------------------------ | -------------------------------------------------------- |
+| `npm run dev:api` / `dev:worker`     | Run with reload, loading `.env`                          |
+| `npm run build`                      | Compile to `dist/`, including the `.sql` migration files |
+| `npm run start:api` / `start:worker` | Run the compiled output                                  |
+| `npm run migrate` / `migrate:down`   | Apply / roll back one migration                          |
+| `npm test`                           | Unit tests                                               |
+| `npm run typecheck`                  | Types only, no emit                                      |
 
 ## Configuration
 
@@ -119,10 +119,10 @@ migrations are the source of truth, the types follow them.
 
 ## Health endpoints
 
-| Endpoint | Meaning | Fails when |
-|---|---|---|
-| `GET /healthz` | Liveness — the process is running. Touches no dependency. | the process is dead |
-| `GET /readyz` | Readiness — it can serve traffic. Runs `SELECT 1`. | the database is unreachable → `503` |
+| Endpoint       | Meaning                                                   | Fails when                          |
+| -------------- | --------------------------------------------------------- | ----------------------------------- |
+| `GET /healthz` | Liveness — the process is running. Touches no dependency. | the process is dead                 |
+| `GET /readyz`  | Readiness — it can serve traffic. Runs `SELECT 1`.        | the database is unreachable → `503` |
 
 They are genuinely different: a load balancer needs liveness, a deployment needs
 readiness. A readiness check that cannot fail is decoration, so the failure path
@@ -179,7 +179,7 @@ serves a bad certificate.
   failures as `AggregateError`, whose own `.message` is empty — reading
   `err.message` naively loses the cause entirely.
 - **The database pool must keep its `error` listener.** pg emits `error` on the
-  pool when an *idle* connection dies, and Node escalates an unhandled `error`
+  pool when an _idle_ connection dies, and Node escalates an unhandled `error`
   event into a fatal exception — so removing it makes every database restart
   terminate the api and every worker at once. Covered by a test.
 - **Failures are never swallowed.** Detail goes to the log; responses carry a

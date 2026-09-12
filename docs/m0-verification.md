@@ -8,25 +8,25 @@ Date: 2026-09-12 · Postgres 17-alpine · Node 22-alpine · NestJS 12 · Docker 
 
 ## Results
 
-| Check | Result |
-|---|---|
-| `docker compose up -d --build` from an empty volume | api, postgres, worker running |
-| Migration applied automatically before api/worker start | `0001_init` |
-| Enum types created | 4 (`endpoint_state`, `probe_outcome`, `failure_class`, `stat_grain`) |
-| `failure_class` values | 16, matching docs §3.4 |
-| Migration re-run | no-op |
-| Migration rollback | all 4 types dropped |
-| Migration re-apply | all 4 types restored |
-| `GET /healthz` | `200 {"status":"ok"}` |
-| `GET /readyz` | `200 {"status":"ok","database":"ok"}` |
-| `GET /healthz` with database stopped | `200` — liveness correctly unaffected |
-| `GET /readyz` with database stopped | `503 {"code":"DATABASE_UNAVAILABLE"}` |
-| `GET /readyz` after database restart, no api restart | `200` — pool recovers |
-| Worker SIGTERM | stops in 0 s, exit code 0 |
-| `--scale worker=3` | 3 containers, 3 distinct worker ids |
-| Unit tests | 13 passed |
-| `tsc --noEmit` | clean |
-| `npm audit` | 0 vulnerabilities |
+| Check                                                   | Result                                                               |
+| ------------------------------------------------------- | -------------------------------------------------------------------- |
+| `docker compose up -d --build` from an empty volume     | api, postgres, worker running                                        |
+| Migration applied automatically before api/worker start | `0001_init`                                                          |
+| Enum types created                                      | 4 (`endpoint_state`, `probe_outcome`, `failure_class`, `stat_grain`) |
+| `failure_class` values                                  | 16, matching docs §3.4                                               |
+| Migration re-run                                        | no-op                                                                |
+| Migration rollback                                      | all 4 types dropped                                                  |
+| Migration re-apply                                      | all 4 types restored                                                 |
+| `GET /healthz`                                          | `200 {"status":"ok"}`                                                |
+| `GET /readyz`                                           | `200 {"status":"ok","database":"ok"}`                                |
+| `GET /healthz` with database stopped                    | `200` — liveness correctly unaffected                                |
+| `GET /readyz` with database stopped                     | `503 {"code":"DATABASE_UNAVAILABLE"}`                                |
+| `GET /readyz` after database restart, no api restart    | `200` — pool recovers                                                |
+| Worker SIGTERM                                          | stops in 0 s, exit code 0                                            |
+| `--scale worker=3`                                      | 3 containers, 3 distinct worker ids                                  |
+| Unit tests                                              | 13 passed                                                            |
+| `tsc --noEmit`                                          | clean                                                                |
+| `npm audit`                                             | 0 vulnerabilities                                                    |
 
 ## Defects found by running it, not by compiling it
 
@@ -86,7 +86,7 @@ Cause: `pg.Pool` emits an `error` event when an **idle** pooled connection dies
 listener attached, every database blip took down the whole system at once.
 
 Why it matters more than it looks: NFR-4 is about one worker dying and its work
-being reclaimed. A database restart killing *every* worker simultaneously is a
+being reclaimed. A database restart killing _every_ worker simultaneously is a
 strictly worse failure mode, and it would have appeared in M10's fault-injection
 test as an unexplained total outage.
 
