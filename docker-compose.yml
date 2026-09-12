@@ -1,0 +1,55 @@
+name: probeboard
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: probeboard
+      POSTGRES_PASSWORD: probeboard
+      POSTGRES_DB: probeboard
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U probeboard -d probeboard"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  migrate:
+    build: .
+    command: ["node", "dist/core/db/migrate.js", "up"]
+    environment:
+      DATABASE_URL: postgres://probeboard:probeboard@postgres:5432/probeboard
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    build: .
+    command: ["node", "dist/api/main.js"]
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgres://probeboard:probeboard@postgres:5432/probeboard
+      API_PORT: "3000"
+    ports:
+      - "3000:3000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
+  worker:
+    build: .
+    command: ["node", "dist/worker/main.js"]
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgres://probeboard:probeboard@postgres:5432/probeboard
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    # Scale with: docker compose up --scale worker=3 (NFR-7)
+
+volumes:
+  pgdata:
