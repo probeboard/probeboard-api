@@ -5,7 +5,7 @@ import { Logger } from 'nestjs-pino';
 import { loadConfig } from '../core/config/index.js';
 import { describeError } from '../core/errors/describe.js';
 import { AppModule } from './api.module.js';
-import { configureApp } from './bootstrap.js';
+import { configureApp, registerNotFoundFallback } from './bootstrap.js';
 
 async function bootstrap(): Promise<void> {
   // Validate the environment before anything else is constructed, so a bad
@@ -16,6 +16,7 @@ async function bootstrap(): Promise<void> {
   app.useLogger(app.get(Logger));
 
   configureApp(app, cfg);
+  await registerNotFoundFallback(app);
 
   await app.listen(cfg.API_PORT);
   app.get(Logger).log({ port: cfg.API_PORT, env: cfg.NODE_ENV, msg: 'api listening' });

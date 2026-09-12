@@ -34,9 +34,12 @@ describe('configureApp', () => {
     expect(UNVERSIONED_PATHS).toContain('readyz');
   });
 
-  it('excludes the catch-all, so an unversioned path still gets JSON', () => {
-    // Otherwise Express answers unmatched non-/v1 paths with an HTML page.
-    expect(UNVERSIONED_PATHS.some((p) => typeof p === 'object' && p.path === '*splat')).toBe(true);
+  it('excludes only explicit paths, never a wildcard', () => {
+    // Nest matches every exclude entry against every discovered route, so a
+    // wildcard excludes the whole API from the prefix rather than one
+    // controller. That is exactly what it did: /monitors was served and
+    // /v1/monitors returned 404.
+    expect(UNVERSIONED_PATHS.every((p) => typeof p === 'string' && !p.includes('*'))).toBe(true);
   });
 
   it('registers the error filter so no failure escapes unmapped', () => {
